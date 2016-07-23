@@ -386,7 +386,7 @@ class Deconvolution2D(Convolution2D):
     (tuple of integers, does not include the sample axis),
     e.g. `input_shape=(3, 128, 128)` for 128x128 RGB pictures.
     '''
-    def __init__(self, nb_filter, nb_row, nb_col, output_shape,
+    def __init__(self, nb_filter, nb_row, nb_col, output_shape=None,
                  init='glorot_uniform', activation='linear', weights=None,
                  border_mode='valid', subsample=(1, 1),
                  dim_ordering=K.image_dim_ordering(),
@@ -395,7 +395,7 @@ class Deconvolution2D(Convolution2D):
                  bias=True, **kwargs):
 
         if border_mode not in {'valid', 'same'}:
-            raise Exception('Invalid border mode for AtrousConv2D:', border_mode)
+            raise Exception('Invalid border mode for Deconvolution2D:', border_mode)
 
         self.output_shape_ = output_shape
 
@@ -419,10 +419,12 @@ class Deconvolution2D(Convolution2D):
         else:
             raise Exception('Invalid dim_ordering: ' + self.dim_ordering)
 
-        rows = conv_input_length(rows, self.nb_row,
-                                 self.border_mode, self.subsample[0])
-        cols = conv_input_length(cols, self.nb_col,
-                                 self.border_mode, self.subsample[1])
+        if self.border_mode == 'same':
+            rows = rows * self.subsample[0]
+            cols = cols * self.subsample[0]
+        elif self.border_mode == 'valid':
+            rows = (rows - 1) * self.subsample[0] + self.nb_row
+            cols = (cols - 1) * self.subsample[0] + self.nb_col
 
         if self.dim_ordering == 'th':
             return (input_shape[0], self.nb_filter, rows, cols)
@@ -433,7 +435,8 @@ class Deconvolution2D(Convolution2D):
         # return self.output_shape_
 
     def call(self, x, mask=None):
-        # output_shape = self.get_output_shape_for(x.shape)
+        if not self.output_shape_:
+            self.output_shape_ = self.get_output_shape_for(x.shape)
         output = K.deconv2d(x, self.W, self.output_shape_, 
                             strides=self.subsample,
                             border_mode=self.border_mode,
@@ -467,6 +470,20 @@ class Deconvolution2D(Convolution2D):
                   'bias': self.bias}
         base_config = super(Deconvolution2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+    def get_output_shape(input_length, filter_size, border_mode, stride):
+        print("input_lenght: {}, filter_size: {}, border_mode: {}, stride: {}".format(
+            input_length, filter_size, border_mode, stride
+        ))
+        if input_length is None:
+            return None
+        assert border_mode in {'same', 'valid'}
+        if border_mode == 'same':
+            output_length = input_length * stride
+        elif border_mode == 'valid':
+            # output_length = input_length * stride - filter_size + 1
+            output_length = (input_length - 1) * stride + filter_size
+        return output_length
 
 
 class AtrousConvolution2D(Convolution2D):
