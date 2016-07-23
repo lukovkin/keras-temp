@@ -471,20 +471,6 @@ class Deconvolution2D(Convolution2D):
         base_config = super(Deconvolution2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-    def get_output_shape(input_length, filter_size, border_mode, stride):
-        print("input_lenght: {}, filter_size: {}, border_mode: {}, stride: {}".format(
-            input_length, filter_size, border_mode, stride
-        ))
-        if input_length is None:
-            return None
-        assert border_mode in {'same', 'valid'}
-        if border_mode == 'same':
-            output_length = input_length * stride
-        elif border_mode == 'valid':
-            # output_length = input_length * stride - filter_size + 1
-            output_length = (input_length - 1) * stride + filter_size
-        return output_length
-
 
 class AtrousConvolution2D(Convolution2D):
     '''Atrous Convolution operator for filtering windows of two-dimensional inputs.
